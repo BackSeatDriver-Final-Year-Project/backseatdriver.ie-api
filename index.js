@@ -1,6 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const mysql = require('mysql');
+const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 
 const app = express();
@@ -15,10 +15,10 @@ const jwtSecret = 'your_jwt_secret_key';
 
 // Set up MySQL connection
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'root',
-    database: 'finalyearproject'
+    host: '147.182.249.143',
+    user: 'caolan',
+    password: 'RIPstevejobs123@',
+    database: 'backseatdriverdb'
 });
 
 // Connect to MySQL
@@ -100,11 +100,11 @@ app.post('/login', (req, res) => {
                 return res.json({ token });
             } else {
                 // Passwords do not match
-                return res.status(401).json({ message: 'Invalid credentials' });
+                return res.status(401).json({ message: 'passwords do not match. credentials' });
             }
         } else {
             // User not found
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Invalid credentials no account' });
         }
     });
 });

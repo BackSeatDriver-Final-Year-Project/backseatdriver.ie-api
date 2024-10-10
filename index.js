@@ -48,6 +48,11 @@ function authenticateToken(req, res, next) {
     });
 }
 
+// Status endpoint to check if the server is alive
+app.get('/status', (req, res) => {
+    res.status(200).json({ status: 'Server is alive and running!' });
+});
+
 // Register route for creating a new user
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;

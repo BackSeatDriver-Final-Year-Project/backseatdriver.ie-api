@@ -5,6 +5,8 @@ const bcrypt = require('bcrypt');
 
 const app = express();
 
+app.use(cors());  // This will enable CORS for all requests
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

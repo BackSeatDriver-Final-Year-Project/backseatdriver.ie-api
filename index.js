@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2');
+// import this bloody library
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 

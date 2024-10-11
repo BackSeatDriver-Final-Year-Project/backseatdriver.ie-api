@@ -113,7 +113,7 @@ app.post('/login', (req, res) => {
             }
         } else {
             // User not found
-            return res.status(401).json({ message: 'Invalid credentials no account' });
+            return res.status(401).json({ message: 'Invalid credentials no account' + username + ' ' + password });
         }
     });
 });

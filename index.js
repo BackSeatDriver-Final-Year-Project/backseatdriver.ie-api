@@ -18,12 +18,16 @@ const port = 3000;
 const jwtSecret = 'your_jwt_secret_key';
 
 // Set up MySQL connection
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: '147.182.249.143',
     user: 'caolan',
     password: 'RIPstevejobs123@',
-    database: 'backseatdriverdb'
+    database: 'backseatdriverdb',
+    waitForConnections: true,
+    connectionLimit: 10,
+    connectTimeout: 60000 // Timeout set to 60 seconds
 });
+
 
 // Connect to MySQL
 db.connect((err) => {

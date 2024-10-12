@@ -1,41 +1,29 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2');
-// import this bloody library
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 
 const app = express();
 
-app.use(cors());  // This will enable CORS for all requests
-
+app.use(cors()); // Enable CORS for all requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const port = 3000;
 
 // JWT Secret Key
-const jwtSecret = 'your_jwt_secret_key';
+const jwtSecret = 'your_jwt_secret_key'; // Move this to environment variables in production
 
-// Set up MySQL connection
+// Set up MySQL connection pool
 const db = mysql.createPool({
+    connectionLimit: 10, // Adjust based on expected load
     host: '147.182.249.143',
     user: 'caolan',
     password: 'RIPstevejobs123@',
     database: 'backseatdriverdb',
     waitForConnections: true,
-    connectionLimit: 10,
     connectTimeout: 60000 // Timeout set to 60 seconds
-});
-
-
-// Connect to MySQL
-db.connect((err) => {
-    if (err) {
-        console.error('Error connecting to MySQL:', err.stack);
-        return;
-    }
-    console.log('Connected to MySQL as id', db.threadId);
 });
 
 // Middleware to verify JWT token
@@ -61,6 +49,12 @@ app.get('/status', (req, res) => {
     res.status(200).json({ status: 'Server is alive and running!' });
 });
 
+// Error handler for database errors
+const handleDBError = (err, res) => {
+    console.error('Database error:', err);
+    res.status(500).json({ message: 'Database error', error: err });
+};
+
 // Register route for creating a new user
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
@@ -69,7 +63,7 @@ app.post('/register', async (req, res) => {
     const checkUserQuery = 'SELECT * FROM users WHERE username = ?';
     db.query(checkUserQuery, [username], async (err, results) => {
         if (err) {
-            return res.status(500).json({ message: 'Database error', error: err });
+            return handleDBError(err, res);
         }
 
         if (results.length > 0) {
@@ -83,7 +77,7 @@ app.post('/register', async (req, res) => {
         const insertUserQuery = 'INSERT INTO users (username, password) VALUES (?, ?)';
         db.query(insertUserQuery, [username, hashedPassword], (err, results) => {
             if (err) {
-                return res.status(500).json({ message: 'Database error', error: err });
+                return handleDBError(err, res);
             }
 
             res.status(201).json({ message: 'User registered successfully' });
@@ -99,7 +93,7 @@ app.post('/login', (req, res) => {
     const query = 'SELECT * FROM users WHERE username = ?';
     db.query(query, [username], async (err, results) => {
         if (err) {
-            return res.status(500).json({ message: 'Database error', error: err });
+            return handleDBError(err, res);
         }
 
         if (results.length > 0) {
@@ -113,11 +107,11 @@ app.post('/login', (req, res) => {
                 return res.json({ token });
             } else {
                 // Passwords do not match
-                return res.status(401).json({ message: 'passwords do not match. credentials' });
+                return res.status(401).json({ message: 'Passwords do not match' });
             }
         } else {
             // User not found
-            return res.status(401).json({ message: 'Invalid credentials no account' + username + ' ' + password });
+            return res.status(401).json({ message: 'Invalid credentials' });
         }
     });
 });
@@ -130,7 +124,7 @@ app.get('/vehicles', authenticateToken, (req, res) => {
     const query = 'SELECT * FROM registered_vehicles WHERE FK = ?';
     db.query(query, [userId], (err, results) => {
         if (err) {
-            return res.status(500).json({ message: 'Database error', error: err });
+            return handleDBError(err, res);
         }
 
         res.json(results);

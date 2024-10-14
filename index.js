@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-
+const NodeCache = require('node-cache');
+const myCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 const app = express();
 
 app.use(cors()); // Enable CORS for all requests
@@ -12,18 +13,18 @@ app.use(express.urlencoded({ extended: true }));
 
 const port = 3000;
 
-// JWT Secret Key
-const jwtSecret = 'your_jwt_secret_key'; // Move this to environment variables in production
+// JWT Secret Key (Move to environment variables in production)
+const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
 // Set up MySQL connection pool
 const db = mysql.createPool({
-    connectionLimit: 10, // Adjust based on expected load
+    connectionLimit: 20, // Increased based on expected load
     host: '147.182.249.143',
     user: 'caolan',
-    password: 'RIPstevejobs123@',
+    password: process.env.DB_PASSWORD || 'RIPstevejobs123@', // Store in environment variables
     database: 'backseatdriverdb',
     waitForConnections: true,
-    connectTimeout: 60000 // Timeout set to 60 seconds
+    connectTimeout: 30000, // Reduced timeout to 30 seconds
 });
 
 // Middleware to verify JWT token
@@ -116,18 +117,33 @@ app.post('/login', (req, res) => {
     });
 });
 
-// Endpoint to list all registered vehicles for the authenticated user
 app.get('/vehicles', authenticateToken, (req, res) => {
-    const userId = req.user.id; // Get the authenticated user's ID from the token
+    const userId = req.user.id;
 
-    // Query to get all vehicles registered by the authenticated user
+    // Check if the data is in the cache
+    const cachedData = myCache.get(`vehicles_${userId}`);
+
+    if (cachedData) {
+        return res.json(cachedData); // Send cached data
+    }
+
+    // If not in the cache, query the database
     const query = 'SELECT * FROM registered_vehicles WHERE FK = ?';
     db.query(query, [userId], (err, results) => {
-        if (err) {
-            return handleDBError(err, res);
-        }
+        if (err) return handleDBError(err, res);
+
+        // Store the results in cache
+        myCache.set(`vehicles_${userId}`, results);
 
         res.json(results);
+    });
+});
+
+// Gracefully close the database connection pool on shutdown
+process.on('SIGINT', () => {
+    db.end(err => {
+        console.log('Database connection pool closed');
+        process.exit(err ? 1 : 0);
     });
 });
 

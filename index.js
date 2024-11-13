@@ -143,6 +143,36 @@ app.get('/vehicles', authenticateToken, (req, res) => {
     });
 });
 
+// Vehicle-specific endpoint with authentication and caching
+app.get('/vehicles/id/:id', authenticateToken, (req, res) => {
+    const userId = req.user.id; // User ID from the token
+    const vehicleId = req.params.id; // Vehicle ID from the URL parameter
+
+    // Check if the specific vehicle data is in the cache
+    const cachedData = myCache.get(`vehicle_${userId}_${vehicleId}`);
+    if (cachedData) {
+        return res.json(cachedData); // Send cached data if available
+    }
+
+    // Query the database for the specific vehicle for the authenticated user
+    const query = 'SELECT * FROM registered_vehicles WHERE FK = ? AND unique_id = ?';
+    db.query(query, [userId, vehicleId], (err, results) => {
+        if (err) {
+            return handleDBError(err, res); // Handle database error
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'Vehicle not found' }); // Handle case if no vehicle is found
+        }
+
+        // Store the results in cache for faster future access
+        myCache.set(`vehicle_${userId}_${vehicleId}`, results[0]);
+
+        res.json(results[0]); // Send the specific vehicle data as a response
+    });
+});
+
+
 // Gracefully close the database connection pool on shutdown
 process.on('SIGINT', () => {
     db.end(err => {

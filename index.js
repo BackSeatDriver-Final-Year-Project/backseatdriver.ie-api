@@ -248,6 +248,37 @@ app.get('/search_app', (req, res) => {
 });
 
 
+// Endpoint to add a record to app_list
+app.post('/posttoapp', (req, res) => {
+    const { firstname, sirname, county, town } = req.body;
+
+    // Validate required fields
+    if (!firstname || !sirname || !county || !town) {
+        return res.status(400).json({ message: 'All fields (firstname, sirname, county, town) are required' });
+    }
+
+    // SQL query to insert a new record
+    const query = `
+        INSERT INTO app_list (firstname, sirname, county, town)
+        VALUES (?, ?, ?, ?)
+    `;
+
+    // Execute the query
+    db.query(query, [firstname, sirname, county, town], (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Failed to add record', error: err });
+        }
+
+        res.status(201).json({
+            message: 'Record added successfully',
+            id: results.insertId, // Return the ID of the newly inserted record
+        });
+    });
+});
+
+
+
 
 // Vehicle-specific endpoint with authentication and caching
 app.get('/vehicles/id/:id', authenticateToken, (req, res) => {

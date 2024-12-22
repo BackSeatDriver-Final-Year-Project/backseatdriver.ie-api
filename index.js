@@ -259,8 +259,7 @@ app.post('/posttoapp', (req, res) => {
 
     // SQL query to insert a new record
     const query = `
-        INSERT INTO app_list (Name, Address)
-        VALUES (?, ?)
+        INSERT INTO app_list (Name, Address) VALUES (?, ?)
     `;
 
     // Execute the query

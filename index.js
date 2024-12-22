@@ -219,6 +219,34 @@ app.post('/api/app_list_family', (req, res) => {
     );
 });
 
+// app search functionality 
+app.get('/search_app', (req, res) => {
+    const { firstname = '', lastname = '' } = req.query; // Get query parameters
+
+    // Ensure at least one parameter is provided
+    if (!firstname && !lastname) {
+        return res.status(400).json({ message: 'Please provide at least one search term for firstname or lastname' });
+    }
+
+    // Build the SQL query
+    const query = `
+        SELECT * 
+        FROM app_list 
+        WHERE name LIKE ? OR name LIKE ?
+    `;
+    const firstnamePattern = `%${firstname}%`;
+    const lastnamePattern = `%${lastname}%`;
+
+    db.query(query, [firstnamePattern, lastnamePattern], (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Failed to search records', error: err });
+        }
+
+        res.json(results); // Send matching records as JSON response
+    });
+});
+
 
 
 // Vehicle-specific endpoint with authentication and caching

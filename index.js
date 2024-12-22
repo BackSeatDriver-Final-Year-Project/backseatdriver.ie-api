@@ -173,6 +173,53 @@ app.post('/app_endpoint_family', (req, res) => {
     });
 });
 
+app.post('/api/app_list_family', (req, res) => {
+    const {
+        Name,
+        Address,
+        Time,
+        Description,
+        Personal_msg,
+        Family_flowers,
+        Donations,
+        Funeral_arrangement,
+        Date_published,
+        Funeral_time,
+        Image,
+    } = req.body;
+
+    const sql = `
+      INSERT INTO app_list_family
+      (Name, Address, Time, Description, Personal_msg, Family_flowers, Donations, Funeral_arrangement, Date_published, Funeral_time, Image)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+        sql,
+        [
+            Name,
+            Address,
+            Time,
+            Description,
+            Personal_msg,
+            Family_flowers,
+            Donations,
+            Funeral_arrangement,
+            Date_published,
+            Funeral_time,
+            Image,
+        ],
+        (err, result) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Failed to insert data' });
+            }
+            res.json({ message: 'Data inserted successfully', id: result.insertId });
+        }
+    );
+});
+
+
 
 // Vehicle-specific endpoint with authentication and caching
 app.get('/vehicles/id/:id', authenticateToken, (req, res) => {

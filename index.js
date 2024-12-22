@@ -160,6 +160,20 @@ app.post('/app_endpoint', (req, res) => {
 });
 
 
+app.post('/app_endpoint_family', (req, res) => {
+    const query = 'SELECT * FROM app_list_family';
+
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Failed to retrieve records', error: err });
+        }
+
+        res.json(results); // Send all records as JSON response
+    });
+});
+
+
 // Vehicle-specific endpoint with authentication and caching
 app.get('/vehicles/id/:id', authenticateToken, (req, res) => {
     const userId = req.user.id; // User ID from the token

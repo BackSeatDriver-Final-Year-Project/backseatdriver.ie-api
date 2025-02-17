@@ -172,6 +172,29 @@ app.get('/vehicles/id/:id', authenticateToken, (req, res) => {
 });
 
 
+// Endpoint to register a new vehicle
+app.post('/register-vehicle', authenticateToken, (req, res) => {
+    const userId = req.user.id; // Extract user ID from the JWT token
+    const { name, VID, last_login } = req.body;
+
+    if (!name || !VID) {
+        return res.status(400).json({ message: 'Name and VID are required' });
+    }
+
+    const query = 'INSERT INTO registered_vehicles (name, VID, FK, last_login) VALUES (?, ?, ?, ?)';
+    const values = [name, VID, userId, last_login || null];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            return handleDBError(err, res);
+        }
+
+        res.status(201).json({ message: 'Vehicle registered successfully', vehicleId: result.insertId });
+    });
+});
+
+
+
 // Gracefully close the database connection pool on shutdown
 process.on('SIGINT', () => {
     db.end(err => {

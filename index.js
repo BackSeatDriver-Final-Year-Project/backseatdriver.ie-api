@@ -195,32 +195,29 @@ app.post('/register-vehicle', authenticateToken, (req, res) => {
 
 
 // Update vehicle location
-app.put('/update-location', async (req, res) => {
+app.put('/update-location', (req, res) => {
     const { VID, latitude, longitude } = req.body;
-  
-    // Check if all required fields are provided
-    if (!VID || latitude === undefined || longitude === undefined) {
-      return res.status(400).json({ message: 'Missing required fields: VID, latitude, longitude' });
-    }
-  
-    try {
-      // Update latitude and longitude in the database
-      const [result] = await db.execute(
-        'UPDATE registered_vehicles SET location_lat = ?, location_long = ? WHERE VID = ?',
-        [latitude, longitude, VID]
-      );
-  
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ message: 'Vehicle not found' });
-      }
-  
-      res.status(200).json({ message: 'Location updated successfully' });
-    } catch (error) {
-      console.error('Database error:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
 
+    // Validate required fields
+    if (!VID || latitude === undefined || longitude === undefined) {
+        return res.status(400).json({ message: 'Missing required fields: VID, latitude, longitude' });
+    }
+
+    const query = 'UPDATE registered_vehicles SET location_lat = ?, location_long = ? WHERE VID = ?';
+
+    db.query(query, [latitude, longitude, VID], (err, result) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Vehicle not found' });
+        }
+
+        res.status(200).json({ message: 'Location updated successfully' });
+    });
+});
 
 
 // Gracefully close the database connection pool on shutdown

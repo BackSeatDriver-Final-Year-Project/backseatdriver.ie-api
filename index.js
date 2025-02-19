@@ -195,7 +195,7 @@ app.post('/register-vehicle', authenticateToken, (req, res) => {
 
 
 // Update vehicle location
-router.put('/update-location', async (req, res) => {
+app.put('/update-location', async (req, res) => {
     const { VID, latitude, longitude } = req.body;
   
     // Check if all required fields are provided

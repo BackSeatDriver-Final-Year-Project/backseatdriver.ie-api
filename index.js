@@ -220,6 +220,30 @@ app.put('/update-location', (req, res) => {
 });
 
 
+app.post('/update-device-status', authenticateToken, (req, res) => {
+    const { vid, device_charging_level, device_charging_status, connected_device_name } = req.body;
+    
+    if (!vid || device_charging_level === undefined || !device_charging_status || !connected_device_name) {
+        return res.status(400).json({ message: 'Missing required fields' });
+    }
+    
+    const sql = `UPDATE registered_vehicles SET device_charging_level = ?, device_charging_status = ?, connected_device_name = ? WHERE vid = ?`;
+    
+    db.query(sql, [device_charging_level, device_charging_status, connected_device_name, vid], (err, result) => {
+        if (err) {
+            console.error('Database update error:', err);
+            return res.status(500).json({ message: 'Database error' });
+        }
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Vehicle not found' });
+        }
+        
+        res.json({ message: 'Device status updated successfully' });
+    });
+});
+
+
 // Gracefully close the database connection pool on shutdown
 process.on('SIGINT', () => {
     db.end(err => {

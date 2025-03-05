@@ -5,15 +5,15 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const NodeCache = require('node-cache');
 const http = require('http');
-// const { Server } = require('socket.io');
+
 
 const app = express();
+const server = http.createServer(app);
+const { Server } = require('socket.io');
 
-// const server = http.createServer(app);
-
-// const io = new Server(app, {
-//     cors: { origin: '*' } // Allow all origins
-// });
+const io = new Server(server, {
+    cors: { origin: '*' }
+});
 
 app.use(cors()); // Enable CORS for all requests
 app.use(express.json());
@@ -37,6 +37,28 @@ const db = mysql.createPool({
 
 // Initialize cache with a TTL of 60 seconds
 const myCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
+
+// Socket.IO Connection Handling
+io.on('connection', (socket) => {
+    console.log('A user connected');
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
+// Example Socket.IO Event
+app.post('/update-number', (req, res) => {
+    const { vid, number_value } = req.body;
+
+    if (!vid || number_value === undefined) {
+        return res.status(400).json({ message: 'Missing required fields: vid, number_value' });
+    }
+
+    io.emit('numberUpdated', { vid, number_value });
+
+    res.status(200).json({ message: 'Number updated successfully', number_value });
+});
 
 // Middleware to verify JWT token
 function authenticateToken(req, res, next) {
@@ -284,6 +306,6 @@ process.on('SIGINT', () => {
     });
 });
 
-app.listen(port, () => {
+server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });

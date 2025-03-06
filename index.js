@@ -47,18 +47,13 @@ io.on('connection', (socket) => {
     });
 });
 
-// Example Socket.IO Event
-app.post('/update-number', (req, res) => {
-    const { vid, number_value } = req.body;
-
-    if (!vid || number_value === undefined) {
-        return res.status(400).json({ message: 'Missing required fields: vid, number_value' });
-    }
-
-    io.emit('numberUpdated', { vid, number_value });
-
-    res.status(200).json({ message: 'Number updated successfully', number_value });
+// Test Socket.IO connection
+app.get('/test-socket', (req, res) => {
+    io.emit('testMessage', { message: 'This is a test message from the server!' });
+    res.status(200).json({ message: 'Test socket event emitted successfully!' });
 });
+
+
 
 // Middleware to verify JWT token
 function authenticateToken(req, res, next) {

@@ -9,16 +9,16 @@ const http = require('http');
 
 const app = express();
 const server = http.createServer(app);
-const SocketServer= require('socket.io');
+const { Server }= require('socket.io');
 
-// const io = new Server(server, {
-//     cors: { origin: '*' }
-// });
+const io = new Server(server, {
+    cors: { origin: '*' }
+});
 
 app.use(cors()); // Enable CORS for all requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'], credentials: true }));
+app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'], credentials: true }));
 
 const port = 3000;
 
@@ -39,22 +39,20 @@ const db = mysql.createPool({
 // Initialize cache with a TTL of 60 seconds
 const myCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 
-// // Socket.IO Connection Handling
-// io.on('connection', (socket) => {
-//     console.log('A user connected');
+// Socket.IO Connection Handling
+io.on('connection', (socket) => {
+    console.log('A user connected');
 
-//     socket.on('disconnect', () => {
-//         console.log('User disconnected');
-//     });
-// });
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
 
 // Test Socket.IO connection
-// app.get('/test-socket', (req, res) => {
-//     io.emit('testMessage', { message: 'This is a test message from the server!' });
-//     res.status(200).json({ message: 'Test socket event emitted successfully!' });
-// });
-
-
+app.get('/test-socket', (req, res) => {
+    io.emit('testMessage', { message: 'This is a test message from the server!' });
+    res.status(200).json({ message: 'Test socket event emitted successfully!' });
+});
 
 // Middleware to verify JWT token
 function authenticateToken(req, res, next) {

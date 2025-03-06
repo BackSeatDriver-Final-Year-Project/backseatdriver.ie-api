@@ -81,28 +81,28 @@ const handleDBError = (err, res) => {
     res.status(500).json({ message: 'Database error', error: err });
 };
 
-// // Socket.IO connection handling
-// io.on('connection', (socket) => {
-//     console.log('A user connected');
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+    console.log('A user connected');
 
-//     socket.on('disconnect', () => {
-//         console.log('User disconnected');
-//     });
-// });
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
 
 
-// app.post('/update-number', (req, res) => {
-//     const { vid, number_value } = req.body;
+app.post('/update-number', (req, res) => {
+    const { vid, number_value } = req.body;
 
-//     if (!vid || number_value === undefined) {
-//         return res.status(400).json({ message: 'Missing required fields: vid, number_value' });
-//     }
+    if (!vid || number_value === undefined) {
+        return res.status(400).json({ message: 'Missing required fields: vid, number_value' });
+    }
 
-//     // Emit the number update to all connected clients
-//     io.emit('numberUpdated', { vid, number_value });
+    // Emit the number update to all connected clients
+    io.emit('numberUpdated', { vid, number_value });
 
-//     res.status(200).json({ message: 'Number updated successfully', number_value });
-// });
+    res.status(200).json({ message: 'Number updated successfully', number_value });
+});
 
 // Register route for creating a new user
 app.post('/register', async (req, res) => {

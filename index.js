@@ -7,13 +7,18 @@ const NodeCache = require('node-cache');
 const http = require('http');
 
 
+const socketIo = require('socket.io');
 const app = express();
 const server = http.createServer(app);
-const { Server }= require('socket.io');
 
-const io = new Server(server, {
-    cors: { origin: '*' }
+
+const io = socketIo(server, {
+    cors: {
+        origin: "*", // Allow all origins for testing
+    }
 });
+
+
 
 app.use(cors()); // Enable CORS for all requests
 app.use(express.json());
@@ -39,20 +44,24 @@ const db = mysql.createPool({
 // Initialize cache with a TTL of 60 seconds
 const myCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 
-// Socket.IO Connection Handling
+
+// Handle socket connections
 io.on('connection', (socket) => {
-    console.log('A user connected');
+    console.log('A client connected:', socket.id);
+
+    // Example: Receive message from client
+    socket.on('sendMessage', (data) => {
+        console.log('Message received:', data);
+
+        // Broadcast message to all clients
+        io.emit('receiveMessage', data);
+    });
 
     socket.on('disconnect', () => {
-        console.log('User disconnected');
+        console.log('A client disconnected:', socket.id);
     });
 });
 
-// Test Socket.IO connection
-app.get('/test-socket', (req, res) => {
-    io.emit('testMessage', { message: 'This is a test message from the server!' });
-    res.status(200).json({ message: 'Test socket event emitted successfully!' });
-});
 
 // Middleware to verify JWT token
 function authenticateToken(req, res, next) {
@@ -81,28 +90,6 @@ const handleDBError = (err, res) => {
     res.status(500).json({ message: 'Database error', error: err });
 };
 
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-    console.log('A user connected');
-
-    socket.on('disconnect', () => {
-        console.log('User disconnected');
-    });
-});
-
-
-app.post('/update-number', (req, res) => {
-    const { vid, number_value } = req.body;
-
-    if (!vid || number_value === undefined) {
-        return res.status(400).json({ message: 'Missing required fields: vid, number_value' });
-    }
-
-    // Emit the number update to all connected clients
-    io.emit('numberUpdated', { vid, number_value });
-
-    res.status(200).json({ message: 'Number updated successfully', number_value });
-});
 
 // Register route for creating a new user
 app.post('/register', async (req, res) => {
@@ -301,5 +288,5 @@ process.on('SIGINT', () => {
 });
 
 server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+    console.log(`Server running on ${port}`);
 });

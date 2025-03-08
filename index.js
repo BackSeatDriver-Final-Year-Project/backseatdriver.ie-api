@@ -5,8 +5,6 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const NodeCache = require('node-cache');
 const http = require('http');
-
-
 const socketIo = require('socket.io');
 const app = express();
 const server = http.createServer(app);
@@ -19,16 +17,15 @@ const io = socketIo(server, {
 });
 
 
+const port = 3000;
+
+// JWT Secret Key (Move to environment variables in production)
+const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
 app.use(cors()); // Enable CORS for all requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'], credentials: true }));
-
-const port = 3000;
-
-// JWT Secret Key (Move to environment variables in production)
-const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
 // Set up MySQL connection pool
 const db = mysql.createPool({
@@ -44,24 +41,49 @@ const db = mysql.createPool({
 // Initialize cache with a TTL of 60 seconds
 const myCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 
+// Store subscribed clients by VIN
+let subscribedClients = {};
 
-// Handle socket connections
 io.on('connection', (socket) => {
     console.log('A client connected:', socket.id);
 
-    // Example: Receive message from client
-    socket.on('sendMessage', (data) => {
-        console.log('Message received:', data);
-
-        // Broadcast message to all clients
-        io.emit('receiveMessage', data);
+    // Handle client subscription for a specific VIN
+    socket.on('subscribeToVin', (vin) => {
+        socket.vin = vin; // Store VIN in socket session
+        if (!subscribedClients[vin]) {
+            subscribedClients[vin] = [];
+        }
+        subscribedClients[vin].push(socket);
+        console.log(`Client subscribed to VIN: ${vin}`);
     });
 
+    // Handle incoming OBD-II data
+    socket.on('obdData', (data) => {
+        console.log('Received OBD-II Data:', data);
+
+        const { vin } = data;
+
+        // Send data only to clients subscribed to this VIN
+        if (subscribedClients[vin]) {
+            subscribedClients[vin].forEach(clientSocket => {
+                clientSocket.emit('updateObdData', data);
+            });
+        }
+    });
+
+    // Handle client disconnection
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
+
+        // Remove client from the subscribed list
+        if (socket.vin && subscribedClients[socket.vin]) {
+            subscribedClients[socket.vin] = subscribedClients[socket.vin].filter(client => client.id !== socket.id);
+            if (subscribedClients[socket.vin].length === 0) {
+                delete subscribedClients[socket.vin]; // Remove empty VIN entry
+            }
+        }
     });
 });
-
 
 // Middleware to verify JWT token
 function authenticateToken(req, res, next) {
@@ -89,7 +111,6 @@ const handleDBError = (err, res) => {
     console.error('Database error:', err);
     res.status(500).json({ message: 'Database error', error: err });
 };
-
 
 // Register route for creating a new user
 app.post('/register', async (req, res) => {
@@ -177,6 +198,7 @@ app.get('/vehicles', authenticateToken, (req, res) => {
         res.json(results);
     });
 })
+
 // Vehicle-specific endpoint with authentication and caching
 app.get('/vehicles/id/:id', authenticateToken, (req, res) => {
     const userId = req.user.id; // User ID from the token
@@ -206,7 +228,6 @@ app.get('/vehicles/id/:id', authenticateToken, (req, res) => {
     });
 });
 
-
 // Endpoint to register a new vehicle
 app.post('/register-vehicle', authenticateToken, (req, res) => {
     const userId = req.user.id; // Extract user ID from the JWT token
@@ -227,7 +248,6 @@ app.post('/register-vehicle', authenticateToken, (req, res) => {
         res.status(201).json({ message: 'Vehicle registered successfully', vehicleId: result.insertId });
     });
 });
-
 
 // Update vehicle location
 app.put('/update-location', (req, res) => {
@@ -254,30 +274,28 @@ app.put('/update-location', (req, res) => {
     });
 });
 
-
 app.post('/update-device-status', authenticateToken, (req, res) => {
     const { vid, device_charging_level, device_charging_status, connected_device_name } = req.body;
-    
+
     if (!vid || device_charging_level === undefined || !device_charging_status || !connected_device_name) {
         return res.status(400).json({ message: 'Missing required fields' });
     }
-    
+
     const sql = `UPDATE registered_vehicles SET device_charging_level = ?, device_charging_status = ?, connected_device_name = ? WHERE vid = ?`;
-    
+
     db.query(sql, [device_charging_level, device_charging_status, connected_device_name, vid], (err, result) => {
         if (err) {
             console.error('Database update error:', err);
             return res.status(500).json({ message: 'Database error' });
         }
-        
+
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Vehicle not found' });
         }
-        
+
         res.json({ message: 'Device status updated successfully' });
     });
 });
-
 
 // Gracefully close the database connection pool on shutdown
 process.on('SIGINT', () => {

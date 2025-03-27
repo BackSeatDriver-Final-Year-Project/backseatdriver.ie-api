@@ -146,7 +146,7 @@ io.on('connection', (socket) => {
 
             const query = `INSERT INTO journeys (VID, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset) VALUES (?, ?, ?, ?, ?, ?)`;
             db.query(query, [
-                VID,
+                3,
                 journey_start_time,
                 journey_commence_time,
                 JSON.stringify(journey_dataset),

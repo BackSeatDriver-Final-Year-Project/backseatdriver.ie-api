@@ -41,48 +41,137 @@ const db = mysql.createPool({
 const myCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 
 // Store subscribed clients by VIN
-let subscribedClients = {};
+// let subscribedClients = {};
+
+// io.on('connection', (socket) => {
+//     console.log('A client connected:', socket.id);
+
+//     // Handle client subscription for a specific VIN
+//     socket.on('subscribeToVin', (vin) => {
+//         socket.vin = vin; // Store VIN in socket session
+//         if (!subscribedClients[vin]) {
+//             subscribedClients[vin] = [];
+//         }
+//         subscribedClients[vin].push(socket);
+//         console.log(`Client subscribed to VIN: ${vin}`);
+//     });
+
+//     // Handle incoming OBD-II data
+//     socket.on('obdData', (data) => {
+//         console.log('Received OBD-II Data:', data);
+
+//         const { vin } = data;
+
+//         // Send data only to clients subscribed to this VIN
+//         if (subscribedClients[vin]) {
+//             subscribedClients[vin].forEach(clientSocket => {
+//                 clientSocket.emit('updateObdData', data);
+//             });
+//         }
+//     });
+
+//     // Handle client disconnection
+//     socket.on('disconnect', () => {
+//         console.log('A client disconnected:', socket.id);
+
+//         // Remove client from the subscribed list
+//         if (socket.vin && subscribedClients[socket.vin]) {
+//             subscribedClients[socket.vin] = subscribedClients[socket.vin].filter(client => client.id !== socket.id);
+//             if (subscribedClients[socket.vin].length === 0) {
+//                 delete subscribedClients[socket.vin]; // Remove empty VIN entry
+//             }
+//         }
+//     });
+// });
+
+
+const subscribedClients = {};
+const lastJourneyData = {}; // Store last journey data per client
+
+// db.connect(err => {
+//     if (err) {
+//         console.error('Database connection failed:', err);
+//     } else {
+//         console.log('Connected to MySQL database');
+//     }
+// });
 
 io.on('connection', (socket) => {
     console.log('A client connected:', socket.id);
 
-    // Handle client subscription for a specific VIN
-    socket.on('subscribeToVin', (vin) => {
-        socket.vin = vin; // Store VIN in socket session
-        if (!subscribedClients[vin]) {
-            subscribedClients[vin] = [];
+    socket.on('subscribeToVin', (VID) => {
+        socket.VID = VID;
+        if (!subscribedClients[VID]) {
+            subscribedClients[VID] = [];
         }
-        subscribedClients[vin].push(socket);
-        console.log(`Client subscribed to VIN: ${vin}`);
+        subscribedClients[VID].push(socket);
+        console.log(`Client subscribed to VID: ${VID}`);
+
+        // Store journey start time
+        lastJourneyData[socket.id] = {
+            VID,
+            journey_start_time: new Date().toISOString(),
+            journey_commence_time: new Date().toISOString(),
+            journey_dataset: [],
+            speed_dataset: [],
+            fuel_usage_dataset: []
+        };
     });
 
-    // Handle incoming OBD-II data
     socket.on('obdData', (data) => {
-        console.log('Received OBD-II Data:', data);
+        console.log('Received OBD-II Data:');
+        const { VID, speed, fuelLevel } = data;
 
-        const { vin } = data;
+        // Append data to the last journey record
+        if (lastJourneyData[socket.id]) {
+            lastJourneyData[socket.id].journey_dataset.push(data);
+            lastJourneyData[socket.id].speed_dataset.push({ time: new Date().toISOString(), speed });
+            lastJourneyData[socket.id].fuel_usage_dataset.push({ time: new Date().toISOString(), fuelLevel });
+        }
 
-        // Send data only to clients subscribed to this VIN
-        if (subscribedClients[vin]) {
-            subscribedClients[vin].forEach(clientSocket => {
+        if (subscribedClients[VID]) {
+            subscribedClients[VID].forEach(clientSocket => {
                 clientSocket.emit('updateObdData', data);
             });
         }
     });
 
-    // Handle client disconnection
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
+        console.log(lastJourneyData);
 
-        // Remove client from the subscribed list
-        if (socket.vin && subscribedClients[socket.vin]) {
-            subscribedClients[socket.vin] = subscribedClients[socket.vin].filter(client => client.id !== socket.id);
-            if (subscribedClients[socket.vin].length === 0) {
-                delete subscribedClients[socket.vin]; // Remove empty VIN entry
+        // Save last journey data to the database
+        if (lastJourneyData[socket.id]) {
+            const { VID, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset } = lastJourneyData[socket.id];
+
+            const query = `INSERT INTO journeys (VID, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset) VALUES (?, ?, ?, ?, ?, ?)`;
+            db.query(query, [
+                VID,
+                journey_start_time,
+                journey_commence_time,
+                JSON.stringify(journey_dataset),
+                JSON.stringify(speed_dataset),
+                JSON.stringify(fuel_usage_dataset)
+            ], (err, result) => {
+                if (err) {
+                    console.error('Error saving journey data:', err);
+                } else {
+                    console.log('Journey data saved successfully');
+                }
+            });
+
+            delete lastJourneyData[socket.id]; // Cleanup
+        }
+
+        if (socket.VID && subscribedClients[socket.VID]) {
+            subscribedClients[socket.VID] = subscribedClients[socket.VID].filter(client => client.id !== socket.id);
+            if (subscribedClients[socket.VID].length === 0) {
+                delete subscribedClients[socket.VID];
             }
         }
     });
 });
+
 
 // Middleware to verify JWT token
 function authenticateToken(req, res, next) {

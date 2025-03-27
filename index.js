@@ -8,6 +8,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const app = express();
 const server = http.createServer(app);
+require('dotenv').config();
 
 
 const io = socketIo(server, {
@@ -32,7 +33,7 @@ const db = mysql.createPool({
     connectionLimit: 20, // Adjust based on expected load
     host: '147.182.249.143',
     user: 'caolan',
-    password: process.env.DB_PASSWORD || 'RIPstevejobs123@', // Store in environment variables
+    password: process.env.DB_PASSWORD, // Store in environment variables
     database: 'backseatdriverdb',
     waitForConnections: true,
     connectTimeout: 30000, // 30 seconds timeout

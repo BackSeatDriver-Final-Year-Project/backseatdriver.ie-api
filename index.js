@@ -139,6 +139,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
         console.log(lastJourneyData);
+        console.log(socket.id);
 
         // Save last journey data to the database
         if (lastJourneyData[socket.id]) {
@@ -146,7 +147,7 @@ io.on('connection', (socket) => {
 
             const query = `INSERT INTO journeys (VID, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset) VALUES (?, ?, ?, ?, ?, ?)`;
             db.query(query, [
-                3,
+                '3',
                 journey_start_time,
                 journey_commence_time,
                 JSON.stringify(journey_dataset),

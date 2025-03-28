@@ -43,6 +43,8 @@ const myCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 // Store subscribed clients by VIN
 let subscribedClients = {};
 
+const lastJourneyData = {}; // Global variable to track journey data
+
 io.on('connection', (socket) => {
     console.log('A client connected:', socket.id);
 
@@ -64,6 +66,7 @@ io.on('connection', (socket) => {
             fuel_usage_dataset: [],
             last_obd_message: null // Store last received OBD data
         };
+        
     });
 
     socket.on('obdData', (data) => {

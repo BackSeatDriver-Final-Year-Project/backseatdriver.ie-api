@@ -46,23 +46,38 @@ let subscribedClients = {};
 io.on('connection', (socket) => {
     console.log('A client connected:', socket.id);
 
-    // Handle client subscription for a specific VIN
     socket.on('subscribeToVin', (vin) => {
-        socket.vin = vin; // Store VIN in socket session
+        socket.vin = vin;
         if (!subscribedClients[vin]) {
             subscribedClients[vin] = [];
         }
         subscribedClients[vin].push(socket);
         console.log(`Client subscribed to VIN: ${vin}`);
+
+        // Initialize journey data
+        lastJourneyData[socket.id] = {
+            vin,
+            journey_start_time: new Date().toISOString(),
+            journey_commence_time: new Date().toISOString(),
+            journey_dataset: [],
+            speed_dataset: [],
+            fuel_usage_dataset: [],
+            last_obd_message: null // Store last received OBD data
+        };
     });
 
-    // Handle incoming OBD-II data
     socket.on('obdData', (data) => {
         console.log('Received OBD-II Data:', data);
+        const { vin, engineRPM, vehicleSpeed, fuelLevel, throttlePosition, massAirFlow, intakeAirTemp, coolantTemp, latitude, longitude, jounrey, fuel_usage } = data;
 
-        const { vin } = data;
+        // Ensure journey data exists
+        if (lastJourneyData[socket.id]) {
+            lastJourneyData[socket.id].journey_dataset.push(data);
+            lastJourneyData[socket.id].speed_dataset.push({ time: new Date().toISOString(), speed: vehicleSpeed });
+            lastJourneyData[socket.id].fuel_usage_dataset.push({ time: new Date().toISOString(), fuelLevel });
+            lastJourneyData[socket.id].last_obd_message = data; // Store last OBD message
+        }
 
-        // Send data only to clients subscribed to this VIN
         if (subscribedClients[vin]) {
             subscribedClients[vin].forEach(clientSocket => {
                 clientSocket.emit('updateObdData', data);
@@ -70,15 +85,62 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Handle client disconnection
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
 
-        // Remove client from the subscribed list
+        if (lastJourneyData[socket.id]) {
+            const { vin, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset, last_obd_message } = lastJourneyData[socket.id];
+
+            // Save the journey data
+            const journeyQuery = `INSERT INTO journeys (vin, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset) VALUES (?, ?, ?, ?, ?, ?)`;
+            db.query(journeyQuery, [
+                vin,
+                journey_start_time,
+                journey_commence_time,
+                JSON.stringify(journey_dataset),
+                JSON.stringify(speed_dataset),
+                JSON.stringify(fuel_usage_dataset)
+            ], (err, result) => {
+                if (err) {
+                    console.error('Error saving journey data:', err);
+                } else {
+                    console.log('Journey data saved successfully');
+                }
+            });
+
+            // Save the last OBD message
+            if (last_obd_message) {
+                const obdQuery = `INSERT INTO last_obd_data (vin, timestamp, engineRPM, vehicleSpeed, fuelLevel, throttlePosition, massAirFlow, intakeAirTemp, coolantTemp, latitude, longitude, journey, fuel_usage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                db.query(obdQuery, [
+                    vin,
+                    new Date().toISOString(),
+                    last_obd_message.engineRPM,
+                    last_obd_message.vehicleSpeed,
+                    last_obd_message.fuelLevel,
+                    last_obd_message.throttlePosition,
+                    last_obd_message.massAirFlow,
+                    last_obd_message.intakeAirTemp,
+                    last_obd_message.coolantTemp,
+                    last_obd_message.latitude,
+                    last_obd_message.longitude,
+                    JSON.stringify(last_obd_message.jounrey), // Typo in data: "jounrey" instead of "journey"
+                    JSON.stringify(last_obd_message.fuel_usage)
+                ], (err, result) => {
+                    if (err) {
+                        console.error('Error saving last OBD data:', err);
+                    } else {
+                        console.log('Last OBD data saved successfully');
+                    }
+                });
+            }
+
+            delete lastJourneyData[socket.id]; // Cleanup
+        }
+
         if (socket.vin && subscribedClients[socket.vin]) {
             subscribedClients[socket.vin] = subscribedClients[socket.vin].filter(client => client.id !== socket.id);
             if (subscribedClients[socket.vin].length === 0) {
-                delete subscribedClients[socket.vin]; // Remove empty VIN entry
+                delete subscribedClients[socket.vin];
             }
         }
     });

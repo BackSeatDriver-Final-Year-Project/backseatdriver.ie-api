@@ -88,26 +88,8 @@ const myCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 const subscribedClients = {};
 const lastJourneyData = {}; // Store last journey data per client
 
-// db.connect(err => {
-//     if (err) {
-//         console.error('Database connection failed:', err);
-//     } else {
-//         console.log('Connected to MySQL database');
-//     }
-// });
-
 io.on('connection', (socket) => {
     console.log('A client connected:', socket.id);
-
-    // Store journey start time
-    lastJourneyData[socket.id] = {
-        VID,
-        journey_start_time: new Date().toISOString(),
-        journey_commence_time: new Date().toISOString(),
-        journey_dataset: [],
-        speed_dataset: [],
-        fuel_usage_dataset: []
-    };
 
     socket.on('subscribeToVin', (VID) => {
         socket.VID = VID;
@@ -116,10 +98,20 @@ io.on('connection', (socket) => {
         }
         subscribedClients[VID].push(socket);
         console.log(`Client subscribed to VID: ${VID}`);
+
+        // Store journey start time
+        lastJourneyData[socket.id] = {
+            VID,
+            journey_start_time: new Date().toISOString(),
+            journey_commence_time: new Date().toISOString(),
+            journey_dataset: [],
+            speed_dataset: [],
+            fuel_usage_dataset: []
+        };
     });
 
     socket.on('obdData', (data) => {
-        console.log('Received OBD-II Data:');
+        console.log('Received OBD-II Data:', data);
         const { VID, speed, fuelLevel } = data;
 
         // Append data to the last journey record
@@ -139,7 +131,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
         console.log(lastJourneyData);
-        console.log(socket.id);
+        console.log(socket.id)
 
         // Save last journey data to the database
         if (lastJourneyData[socket.id]) {
@@ -147,7 +139,7 @@ io.on('connection', (socket) => {
 
             const query = `INSERT INTO journeys (VID, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset) VALUES (?, ?, ?, ?, ?, ?)`;
             db.query(query, [
-                '3',
+                VID,
                 journey_start_time,
                 journey_commence_time,
                 JSON.stringify(journey_dataset),

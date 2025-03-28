@@ -99,6 +99,16 @@ const lastJourneyData = {}; // Store last journey data per client
 io.on('connection', (socket) => {
     console.log('A client connected:', socket.id);
 
+    // Store journey start time
+    lastJourneyData[socket.id] = {
+        VID,
+        journey_start_time: new Date().toISOString(),
+        journey_commence_time: new Date().toISOString(),
+        journey_dataset: [],
+        speed_dataset: [],
+        fuel_usage_dataset: []
+    };
+
     socket.on('subscribeToVin', (VID) => {
         socket.VID = VID;
         if (!subscribedClients[VID]) {
@@ -106,16 +116,6 @@ io.on('connection', (socket) => {
         }
         subscribedClients[VID].push(socket);
         console.log(`Client subscribed to VID: ${VID}`);
-
-        // Store journey start time
-        lastJourneyData[socket.id] = {
-            VID,
-            journey_start_time: new Date().toISOString(),
-            journey_commence_time: new Date().toISOString(),
-            journey_dataset: [],
-            speed_dataset: [],
-            fuel_usage_dataset: []
-        };
     });
 
     socket.on('obdData', (data) => {

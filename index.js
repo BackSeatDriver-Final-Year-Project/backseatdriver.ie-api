@@ -86,7 +86,7 @@ const myCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 
 
 const subscribedClients = {};
-const lastJourneyData = {}; // Store last journey data per client
+const lastJourneyData = {};
 
 io.on('connection', (socket) => {
     console.log('A client connected:', socket.id);
@@ -97,17 +97,18 @@ io.on('connection', (socket) => {
             subscribedClients[VID] = [];
         }
         subscribedClients[VID].push(socket);
-        console.log(`Client subscribed to VID: ${VID}`);
+        console.log(`Client subscribed to VID: ${VID}, Socket ID: ${socket.id}`);
 
-        // Store journey start time
-        lastJourneyData[socket.id] = {
-            VID,
+        // Store journey start time using VID instead of socket.id
+        lastJourneyData[VID] = {
             journey_start_time: new Date().toISOString(),
             journey_commence_time: new Date().toISOString(),
             journey_dataset: [],
             speed_dataset: [],
             fuel_usage_dataset: []
         };
+
+        console.log('Updated lastJourneyData:', lastJourneyData);
     });
 
     socket.on('obdData', (data) => {
@@ -115,10 +116,10 @@ io.on('connection', (socket) => {
         const { VID, speed, fuelLevel } = data;
 
         // Append data to the last journey record
-        if (lastJourneyData[socket.id]) {
-            lastJourneyData[socket.id].journey_dataset.push(data);
-            lastJourneyData[socket.id].speed_dataset.push({ time: new Date().toISOString(), speed });
-            lastJourneyData[socket.id].fuel_usage_dataset.push({ time: new Date().toISOString(), fuelLevel });
+        if (lastJourneyData[VID]) {
+            lastJourneyData[VID].journey_dataset.push(data);
+            lastJourneyData[VID].speed_dataset.push({ time: new Date().toISOString(), speed });
+            lastJourneyData[VID].fuel_usage_dataset.push({ time: new Date().toISOString(), fuelLevel });
         }
 
         if (subscribedClients[VID]) {
@@ -130,16 +131,14 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
-        console.log(lastJourneyData);
-        console.log(socket.id)
+        console.log('Last known journey data:', lastJourneyData);
 
-        // Save last journey data to the database
-        if (lastJourneyData[socket.id]) {
-            const { VID, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset } = lastJourneyData[socket.id];
+        if (socket.VID && lastJourneyData[socket.VID]) {
+            const { journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset } = lastJourneyData[socket.VID];
 
             const query = `INSERT INTO journeys (VID, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset) VALUES (?, ?, ?, ?, ?, ?)`;
             db.query(query, [
-                VID,
+                socket.VID,
                 journey_start_time,
                 journey_commence_time,
                 JSON.stringify(journey_dataset),
@@ -149,11 +148,11 @@ io.on('connection', (socket) => {
                 if (err) {
                     console.error('Error saving journey data:', err);
                 } else {
-                    console.log('Journey data saved successfully');
+                    console.log('Journey data saved successfully for VID:', socket.VID);
                 }
             });
 
-            delete lastJourneyData[socket.id]; // Cleanup
+            delete lastJourneyData[socket.VID]; // Cleanup
         }
 
         if (socket.VID && subscribedClients[socket.VID]) {
@@ -164,6 +163,7 @@ io.on('connection', (socket) => {
         }
     });
 });
+
 
 
 // Middleware to verify JWT token

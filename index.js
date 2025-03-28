@@ -138,7 +138,7 @@ io.on('connection', (socket) => {
                 });
             }
 
-            delete lastJourneyData[socket.id]; // Cleanup
+            // delete lastJourneyData[socket.id]; // Cleanup
         }
 
         if (socket.vin && subscribedClients[socket.vin]) {

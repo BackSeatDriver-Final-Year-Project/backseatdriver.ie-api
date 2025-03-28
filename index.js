@@ -90,6 +90,7 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
+        console.log(last_obd_message);
 
         if (lastJourneyData[socket.id]) {
             const { vin, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset, last_obd_message } = lastJourneyData[socket.id];

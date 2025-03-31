@@ -48,6 +48,17 @@ const lastJourneyData = {}; // Global variable to track journey data
 io.on('connection', (socket) => {
     console.log('A client connected:', socket.id);
 
+    // Initialize journey data
+    lastJourneyData[socket.id] = {
+        vin: null, // To be set on first OBD data received
+        journey_start_time: null, // To be updated dynamically
+        journey_commence_time: null, // Set on disconnect
+        journey_dataset: [],
+        speed_dataset: [],
+        fuel_usage_dataset: [],
+        last_obd_message: null
+    };
+
     socket.on('subscribeToVin', (vin) => {
         socket.vin = vin;
         if (!subscribedClients[vin]) {
@@ -55,31 +66,29 @@ io.on('connection', (socket) => {
         }
         subscribedClients[vin].push(socket);
         console.log(`Client subscribed to VIN: ${vin}`);
-
-        // Initialize journey data
-        lastJourneyData[socket.id] = {
-            vin,
-            journey_start_time: new Date().toISOString(),
-            journey_commence_time: new Date().toISOString(),
-            journey_dataset: [],
-            speed_dataset: [],
-            fuel_usage_dataset: [],
-            last_obd_message: null // Store last received OBD data
-        };
-        
     });
 
     socket.on('obdData', (data) => {
-        console.log('Received OBD-II Data:', data);
-        const { vin, engineRPM, vehicleSpeed, fuelLevel, throttlePosition, massAirFlow, intakeAirTemp, coolantTemp, latitude, longitude, jounrey, fuel_usage } = data;
+        const { vin, vehicleSpeed, fuelLevel } = data;
 
-        // Ensure journey data exists
-        if (lastJourneyData[socket.id]) {
-            lastJourneyData[socket.id].journey_dataset.push(data);
-            lastJourneyData[socket.id].speed_dataset.push({ time: new Date().toISOString(), speed: vehicleSpeed });
-            lastJourneyData[socket.id].fuel_usage_dataset.push({ time: new Date().toISOString(), fuelLevel });
-            lastJourneyData[socket.id].last_obd_message = data; // Store last OBD message
+        if (!lastJourneyData[socket.id].vin) {
+            lastJourneyData[socket.id].vin = vin;  // Assign VIN on first OBD message
         }
+
+        // If journey_start_time is null, set it to the first received OBD data time
+        if (!lastJourneyData[socket.id].journey_start_time) {
+            const now = new Date();
+            const formattedDate = now.toISOString().slice(0, 19).replace('T', ' ');
+            // formattedDate = '2025-03-30 16:08:39' (example)
+
+            lastJourneyData[socket.id].journey_start_time = formattedDate;
+        }
+
+        // Store OBD Data
+        lastJourneyData[socket.id].journey_dataset.push(data);
+        lastJourneyData[socket.id].speed_dataset.push({ time: new Date().toISOString(), speed: vehicleSpeed });
+        lastJourneyData[socket.id].fuel_usage_dataset.push({ time: new Date().toISOString(), fuelLevel });
+        lastJourneyData[socket.id].last_obd_message = data;
 
         if (subscribedClients[vin]) {
             subscribedClients[vin].forEach(clientSocket => {
@@ -90,19 +99,37 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
-        console.log(last_obd_message);
-        console.log('94');
-        console.log(lastJourneyData);
 
         if (lastJourneyData[socket.id]) {
-            const { vin, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset, last_obd_message } = lastJourneyData[socket.id];
+            const { vin, journey_start_time, journey_dataset, speed_dataset, fuel_usage_dataset } = lastJourneyData[socket.id];
 
-            // Save the journey data
-            const journeyQuery = `INSERT INTO journeys (vin, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset) VALUES (?, ?, ?, ?, ?, ?)`;
-            db.query(journeyQuery, [
+            if (!vin || !journey_start_time) {
+                console.warn('No valid journey data recorded, skipping database insert.');
+                console.log(vin);
+                console.log(journey_start_time);
+                return;
+            }
+
+            // Set the actual end time when the client disconnects
+            now = new Date();
+            const journey_end_time = now.toISOString().slice(0, 19).replace('T', ' ');
+
+            console.log({
                 vin,
                 journey_start_time,
-                journey_commence_time,
+                journey_end_time
+            });
+
+            // Save the journey data
+            const journeyQuery = `
+                INSERT INTO journeys (VID, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            `;
+
+            db.query(journeyQuery, [
+                3, // Replace with actual VID lookup
+                journey_start_time,
+                journey_end_time,
                 JSON.stringify(journey_dataset),
                 JSON.stringify(speed_dataset),
                 JSON.stringify(fuel_usage_dataset)
@@ -114,33 +141,8 @@ io.on('connection', (socket) => {
                 }
             });
 
-            // Save the last OBD message
-            if (last_obd_message) {
-                const obdQuery = `INSERT INTO last_obd_data (vin, timestamp, engineRPM, vehicleSpeed, fuelLevel, throttlePosition, massAirFlow, intakeAirTemp, coolantTemp, latitude, longitude, journey, fuel_usage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-                db.query(obdQuery, [
-                    vin,
-                    new Date().toISOString(),
-                    last_obd_message.engineRPM,
-                    last_obd_message.vehicleSpeed,
-                    last_obd_message.fuelLevel,
-                    last_obd_message.throttlePosition,
-                    last_obd_message.massAirFlow,
-                    last_obd_message.intakeAirTemp,
-                    last_obd_message.coolantTemp,
-                    last_obd_message.latitude,
-                    last_obd_message.longitude,
-                    JSON.stringify(last_obd_message.jounrey), // Typo in data: "jounrey" instead of "journey"
-                    JSON.stringify(last_obd_message.fuel_usage)
-                ], (err, result) => {
-                    if (err) {
-                        console.error('Error saving last OBD data:', err);
-                    } else {
-                        console.log('Last OBD data saved successfully');
-                    }
-                });
-            }
-
-            // delete lastJourneyData[socket.id]; // Cleanup
+            // Clean up memory
+            delete lastJourneyData[socket.id];
         }
 
         if (socket.vin && subscribedClients[socket.vin]) {
@@ -151,6 +153,7 @@ io.on('connection', (socket) => {
         }
     });
 });
+
 
 // Middleware to verify JWT token
 function authenticateToken(req, res, next) {
@@ -262,6 +265,36 @@ app.get('/vehicles', authenticateToken, (req, res) => {
         res.json(results);
     });
 })
+
+
+// Vehicle-specific end point for fetching journeys and caching
+app.get('/journeys/:id', authenticateToken, (req, res) => {
+    // const userId = req.user.id; // User ID from the token
+    const vehicleId = req.params.id; // Vehicle ID from the URL parameter
+
+    // Check if the specific vehicle data is in the cache
+    const cachedData = myCache.get(`vehicle_${vehicleId}`);
+    if (cachedData) {
+        return res.json(cachedData); // Send cached data if available
+    }
+
+    // Query the database for the specific vehicle for the authenticated user
+    const query = 'SELECT journey_id, VID, journey_start_time, journey_commence_time, journey_dataset, fuel_usage_dataset, TIMEDIFF(journey_commence_time, journey_start_time) AS journey_duration FROM journeys WHERE VID = ?';
+    db.query(query, [vehicleId], (err, results) => {
+        if (err) {
+            return handleDBError(err, res); // Handle database error
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'Vehicle not found' }); // Handle case if no vehicle is found
+        }
+
+        // Store the results in cache for faster future access
+        myCache.set(`journey_${vehicleId}`, results);
+
+        res.json(results); // Send the specific vehicle data as a response
+    });
+});
 
 // Vehicle-specific endpoint with authentication and caching
 app.get('/vehicles/id/:id', authenticateToken, (req, res) => {

@@ -21,10 +21,22 @@ const port = 3000;
 // JWT Secret Key (Move to environment variables in production)
 const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
-app.use(cors()); // Enable CORS for all requests
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'], credentials: true }));
+// app.use(cors()); // Enable CORS for all requests
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+// app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'], credentials: true }));
+
+// CORS configuration: Allow only your frontend domain and handle credentials properly
+app.use(cors({
+    origin: 'http://backseatdriver.ie',  // Allow your frontend domain
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true  // If you're sending cookies or tokens, use this
+  }));
+  
+  // Other middlewares
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
 // Set up MySQL connection pool
 const db = mysql.createPool({
@@ -279,7 +291,7 @@ app.get('/journeys/:id', authenticateToken, (req, res) => {
     }
 
     // Query the database for the specific vehicle for the authenticated user
-    const query = 'SELECT journey_id, VID, journey_start_time, journey_commence_time, journey_dataset, fuel_usage_dataset, TIMEDIFF(journey_commence_time, journey_start_time) AS journey_duration FROM journeys WHERE VID = ?';
+    const query = 'SELECT journey_id, VID, journey_start_time, journey_commence_time, journey_dataset, fuel_usage_dataset, TIMEDIFF(journey_commence_time, journey_start_time) AS journeyDuration FROM journeys WHERE VID = ?';
     db.query(query, [vehicleId], (err, results) => {
         if (err) {
             return handleDBError(err, res); // Handle database error

@@ -28,7 +28,7 @@ const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
 // CORS configuration: Allow only your frontend domain and handle credentials properly
 app.use(cors({
-    origin: 'http://backseatdriver.ie',  // Allow your frontend domain
+    origin: '*',  // Allow your frontend domain
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true  // If you're sending cookies or tokens, use this

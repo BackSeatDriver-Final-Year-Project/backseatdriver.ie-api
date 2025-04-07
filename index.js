@@ -27,13 +27,20 @@ const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret_key';
 // app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'], credentials: true }));
 
 // CORS configuration: Allow only your frontend domain and handle credentials properly
-app.use(cors({
-    origin: '*',  // Allow your frontend domain
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true  // If you're sending cookies or tokens, use this
-  }));
+// app.use(cors({
+//     origin: 'http://backseatdriver.ie',  // Allow your frontend domain
+//     methods: ['GET', 'POST'],
+//     allowedHeaders: ['Content-Type', 'Authorization'],
+//     credentials: true  // If you're sending cookies or tokens, use this
+//   }));
   
+  app.use(cors({
+    origin: '*', // Allow any origin
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+  }));
+
   // Other middlewares
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

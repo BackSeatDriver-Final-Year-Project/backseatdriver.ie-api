@@ -201,6 +201,59 @@ const handleDBError = (err, res) => {
     res.status(500).json({ message: 'Database error', error: err });
 };
 
+
+app.get('/vehicle-summary/:vid', async (req, res) => {
+  const vid = req.params.vid;
+
+  try {
+    const [
+      [calendarHeatmap],
+      [totalJourneys],
+      [averageDuration],
+      [activeDays]
+    ] = await Promise.all([
+      db.promise().query(`
+        SELECT 
+          DATE(journey_start_time) AS date,
+          COUNT(*) AS count
+        FROM journeys
+        WHERE VID = ?
+        GROUP BY DATE(journey_start_time)
+        ORDER BY DATE(journey_start_time)
+      `, [vid]),
+
+      db.promise().query(`
+        SELECT COUNT(*) AS total_journeys
+        FROM journeys
+        WHERE VID = ?
+      `, [vid]),
+
+      db.promise().query(`
+        SELECT ROUND(AVG(TIMESTAMPDIFF(MINUTE, journey_start_time, journey_commence_time)), 1) AS avg_duration_minutes
+        FROM journeys
+        WHERE VID = ?
+      `, [vid]),
+
+      db.promise().query(`
+        SELECT COUNT(DISTINCT DATE(journey_start_time)) AS active_days
+        FROM journeys
+        WHERE VID = ?
+      `, [vid])
+    ]);
+
+    res.json({
+      calendarHeatmap: calendarHeatmap,//[0],
+      totalJourneys: totalJourneys,//[0][0],//.total_Journeys,
+      averageDurationMinutes: averageDuration,//[0][0].avg_duration_minutes,
+      activeDays: activeDays,//[0][0].active_days
+    });
+  } catch (error) {
+    console.error('Error fetching vehicle summary:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
 // Register route for creating a new user
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;

@@ -351,7 +351,7 @@ app.get('/journeys/:id', authenticateToken, (req, res) => {
     }
 
     // Query the database for the specific vehicle for the authenticated user
-    const query = 'SELECT journey_id, VID, journey_start_time, journey_commence_time, journey_dataset, fuel_usage_dataset, TIMEDIFF(journey_commence_time, journey_start_time) AS journeyDuration FROM journeys WHERE VID = ?';
+    const query = 'SELECT journey_id, VID, journey_start_time, journey_commence_time, journey_dataset, fuel_usage_dataset, TIMEDIFF(journey_commence_time, journey_start_time) AS journeyDuration FROM journeys WHERE VID = ? ORDER BY journey_commence_time DESC;';
     db.query(query, [vehicleId], (err, results) => {
         if (err) {
             return handleDBError(err, res); // Handle database error

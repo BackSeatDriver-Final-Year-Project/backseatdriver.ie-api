@@ -104,7 +104,8 @@ io.on('connection', (socket) => {
         }
 
         // Store OBD Data
-        lastJourneyData[socket.id].journey_dataset.push(data);
+        // lastJourneyData[socket.id].journey_dataset.push(data);
+        lastJourneyData[socket.id].journey_dataset = data;
         lastJourneyData[socket.id].speed_dataset.push({ time: new Date().toISOString(), speed: vehicleSpeed });
         lastJourneyData[socket.id].fuel_usage_dataset.push({ time: new Date().toISOString(), fuelLevel });
         lastJourneyData[socket.id].last_obd_message = data;

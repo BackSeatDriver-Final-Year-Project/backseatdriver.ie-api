@@ -33,17 +33,17 @@ const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret_key';
 //     allowedHeaders: ['Content-Type', 'Authorization'],
 //     credentials: true  // If you're sending cookies or tokens, use this
 //   }));
-  
-  app.use(cors({
+
+app.use(cors({
     origin: '*', // Allow any origin
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
-  }));
+}));
 
-  // Other middlewares
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+// Other middlewares
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Set up MySQL connection pool
 const db = mysql.createPool({
@@ -204,16 +204,16 @@ const handleDBError = (err, res) => {
 
 
 app.get('/vehicle-summary/:vid', async (req, res) => {
-  const vid = req.params.vid;
+    const vid = req.params.vid;
 
-  try {
-    const [
-      [calendarHeatmap],
-      [totalJourneys],
-      [averageDuration],
-      [activeDays]
-    ] = await Promise.all([
-      db.promise().query(`
+    try {
+        const [
+            [calendarHeatmap],
+            [totalJourneys],
+            [averageDuration],
+            [activeDays]
+        ] = await Promise.all([
+            db.promise().query(`
         SELECT 
           DATE(journey_start_time) AS date,
           COUNT(*) AS count
@@ -223,36 +223,77 @@ app.get('/vehicle-summary/:vid', async (req, res) => {
         ORDER BY DATE(journey_start_time)
       `, [vid]),
 
-      db.promise().query(`
+            db.promise().query(`
         SELECT COUNT(*) AS total_journeys
         FROM journeys
         WHERE VID = ?
       `, [vid]),
 
-      db.promise().query(`
+            db.promise().query(`
         SELECT ROUND(AVG(TIMESTAMPDIFF(MINUTE, journey_start_time, journey_commence_time)), 1) AS avg_duration_minutes
         FROM journeys
         WHERE VID = ?
       `, [vid]),
 
-      db.promise().query(`
+            db.promise().query(`
         SELECT COUNT(DISTINCT DATE(journey_start_time)) AS active_days
         FROM journeys
         WHERE VID = ?
       `, [vid])
-    ]);
+        ]);
 
-    res.json({
-      calendarHeatmap: calendarHeatmap,//[0],
-      totalJourneys: totalJourneys,//[0][0],//.total_Journeys,
-      averageDurationMinutes: averageDuration,//[0][0].avg_duration_minutes,
-      activeDays: activeDays,//[0][0].active_days
-    });
-  } catch (error) {
-    console.error('Error fetching vehicle summary:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
+        res.json({
+            calendarHeatmap: calendarHeatmap,//[0],
+            totalJourneys: totalJourneys,//[0][0],//.total_Journeys,
+            averageDurationMinutes: averageDuration,//[0][0].avg_duration_minutes,
+            activeDays: activeDays,//[0][0].active_days
+        });
+    } catch (error) {
+        console.error('Error fetching vehicle summary:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 });
+
+
+app.get('/vehicle-speed-summary/:vid', async (req, res) => {
+    const vid = req.params.vid;
+
+    try {
+        const [speedSummary] = await db.promise().query(`
+        SELECT
+          vid,
+          SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speed_clock[1][1]')) AS UNSIGNED)) AS unmoving,
+          SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speed_clock[2][1]')) AS UNSIGNED)) AS s_1_10,
+          SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speed_clock[3][1]')) AS UNSIGNED)) AS s_11_20,
+          SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speed_clock[4][1]')) AS UNSIGNED)) AS s_21_50,
+          SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speed_clock[5][1]')) AS UNSIGNED)) AS s_51_80,
+          SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speed_clock[6][1]')) AS UNSIGNED)) AS s_81_100,
+          SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speed_clock[7][1]')) AS UNSIGNED)) AS s_101_120,
+          SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speed_clock[8][1]')) AS UNSIGNED)) AS s_121_1000
+        FROM journeys
+        WHERE vid = ?
+      `, [vid]);
+
+        res.json({
+            speedClock: [
+                ["Speed", "seconds counter"],
+                ["idle time (not moving)", speedSummary[0].unmoving],
+                ["1-10kmph", speedSummary[0].s_1_10],
+                ["11-20kmph", speedSummary[0].s_11_20],
+                ["21-50kmph", speedSummary[0].s_21_50],
+                ["51-80kmph", speedSummary[0].s_51_80],
+                ["81-100kmph", speedSummary[0].s_81_100],
+                ["101-120kmph", speedSummary.s_101_120],
+                ["121-1000kmph", speedSummary.s_121_1000]
+            ]
+        });
+
+    } catch (error) {
+        console.error('Error fetching vehicle speed summary:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 
 
 // Register route for creating a new user

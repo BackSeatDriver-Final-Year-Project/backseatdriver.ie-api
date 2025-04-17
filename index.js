@@ -409,7 +409,7 @@ app.get('/journeys/:id', authenticateToken, (req, res) => {
         }
 
         if (results.length === 0) {
-            return res.status(404).json({ message: 'Vehicle not found' }); // Handle case if no vehicle is found
+            return res.json([{}]); // Handle case if no vehicle is found
         }
 
         // Store the results in cache for faster future access

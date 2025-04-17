@@ -211,7 +211,8 @@ app.get('/vehicle-summary/:vid', async (req, res) => {
             [calendarHeatmap],
             [totalJourneys],
             [averageDuration],
-            [activeDays]
+            [activeDays],
+            [avg_distance_km]
         ] = await Promise.all([
             db.promise().query(`
         SELECT 
@@ -239,7 +240,14 @@ app.get('/vehicle-summary/:vid', async (req, res) => {
         SELECT COUNT(DISTINCT DATE(journey_start_time)) AS active_days
         FROM journeys
         WHERE VID = ?
-      `, [vid])
+      `, [vid]),
+
+            db.promise().query(`
+        SELECT AVG(CAST(JSON_EXTRACT(journey_dataset, '$.distance_travelled') AS DECIMAL(10,2))) AS avg_distance_km
+        FROM journeys
+        WHERE VID = ? 
+        AND JSON_EXTRACT(journey_dataset, '$.distance_travelled') IS NOT NULL;
+        `, [vid])
         ]);
 
         res.json({
@@ -247,6 +255,7 @@ app.get('/vehicle-summary/:vid', async (req, res) => {
             totalJourneys: totalJourneys,//[0][0],//.total_Journeys,
             averageDurationMinutes: averageDuration,//[0][0].avg_duration_minutes,
             activeDays: activeDays,//[0][0].active_days
+            average_distance: avg_distance_km,
         });
     } catch (error) {
         console.error('Error fetching vehicle summary:', error);

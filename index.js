@@ -1,25 +1,26 @@
+// Core modules
+const http = require('http');
+
+// Third-party libraries
 const express = require('express');
-const jwt = require('jsonwebtoken');
-const mysql = require('mysql2');
 const cors = require('cors');
+const mysql = require('mysql2');
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const NodeCache = require('node-cache');
-const http = require('http');
 const socketIo = require('socket.io');
+require('dotenv').config();
+
+// App initialization
 const app = express();
 const server = http.createServer(app);
-require('dotenv').config();
+
 
 const io = socketIo(server, {
     cors: {
         origin: "*", // Allow all origins for testing
     }
-});
-
-const port = 3000;
-
-// JWT Secret Key (Move to environment variables in production)
-const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret_key';
+});;
 
 app.use(cors({
     origin: '*', // Allow any origin
@@ -32,16 +33,21 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Set up MySQL connection pool
+
+const port = process.env.PORT || 3000;
+
 const db = mysql.createPool({
-    connectionLimit: 20, // Adjust based on expected load
-    host: '147.182.249.143',
-    user: 'caolan',
-    password: process.env.DB_PASSWORD, // Store in environment variables
-    database: 'backseatdriverdb',
+    connectionLimit: 20,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
     waitForConnections: true,
-    connectTimeout: 30000, // 30 seconds timeout
+    connectTimeout: 30000,
 });
+
+const jwtSecret = process.env.JWT_SECRET;
+
 
 // Initialize cache with a TTL of 60 seconds
 const myCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });

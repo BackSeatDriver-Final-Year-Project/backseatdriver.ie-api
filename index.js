@@ -243,11 +243,12 @@ app.get('/vehicle-summary/:vid', async (req, res) => {
       `, [vid]),
 
             db.promise().query(`
-        SELECT AVG(CAST(JSON_EXTRACT(journey_dataset, '$.distance_travelled') AS DECIMAL(10,2))) AS avg_distance_km
+        SELECT SUM(CAST(JSON_EXTRACT(journey_dataset, '$.distance_travelled') AS DECIMAL(10,2))) AS total_distance_km
         FROM journeys
         WHERE VID = ? 
         AND JSON_EXTRACT(journey_dataset, '$.distance_travelled') IS NOT NULL;
-        `, [vid])
+    `, [vid])
+
         ]);
 
         res.json({

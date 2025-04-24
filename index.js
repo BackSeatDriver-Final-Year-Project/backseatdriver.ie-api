@@ -21,19 +21,6 @@ const port = 3000;
 // JWT Secret Key (Move to environment variables in production)
 const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
-// app.use(cors()); // Enable CORS for all requests
-// app.use(express.json());
-// app.use(express.urlencoded({ extended: true }));
-// app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'], credentials: true }));
-
-// CORS configuration: Allow only your frontend domain and handle credentials properly
-// app.use(cors({
-//     origin: 'http://backseatdriver.ie',  // Allow your frontend domain
-//     methods: ['GET', 'POST'],
-//     allowedHeaders: ['Content-Type', 'Authorization'],
-//     credentials: true  // If you're sending cookies or tokens, use this
-//   }));
-
 app.use(cors({
     origin: '*', // Allow any origin
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -50,7 +37,7 @@ const db = mysql.createPool({
     connectionLimit: 20, // Adjust based on expected load
     host: '147.182.249.143',
     user: 'caolan',
-    password: process.env.DB_PASSWORD || 'RIPstevejobs123@', // Store in environment variables
+    password: process.env.DB_PASSWORD, // Store in environment variables
     database: 'backseatdriverdb',
     waitForConnections: true,
     connectTimeout: 30000, // 30 seconds timeout

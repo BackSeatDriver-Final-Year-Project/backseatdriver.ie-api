@@ -309,7 +309,10 @@ app.get('/crash-data-summary/:vid', async (req, res) => {
                 'severe_crash_reports', JSON_ARRAYAGG(severe_crash_report),
                 'total_hard_braking_events', SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_braking_events')) AS UNSIGNED)),
                 'total_hard_acceleration_events', SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events')) AS UNSIGNED)),
-                'total_speeding_events', SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speeding_events')) AS UNSIGNED))
+                'total_speeding_events', SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speeding_events')) AS UNSIGNED)),
+                'count_hard_braking_events', COUNT(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_braking_events')) AS UNSIGNED)),
+                'count_hard_acceleration_events', COUNT(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events')) AS UNSIGNED)),
+                'count_speeding_events', COUNT(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speeding_events')) AS UNSIGNED))
             ) AS merged_summary
             FROM (
                 SELECT

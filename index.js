@@ -303,40 +303,42 @@ app.get('/crash-data-summary/:vid', async (req, res) => {
     const vid = req.params.vid;
 
     try {
-        const [
-            [crashData]
-        ] = await Promise.all([
-            db.promise().query(`
-                SELECT JSON_OBJECT(
-                    'crash_reports', JSON_ARRAYAGG(crash_report),
-                    'severe_crash_reports', JSON_ARRAYAGG(severe_crash_report),
-                    'total_hard_braking_events', SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_braking_events')) AS UNSIGNED)),
-                    'total_hard_acceleration_events', SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events')) AS UNSIGNED)),
-                    'total_speeding_events', SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speeding_events')) AS UNSIGNED))
-                ) AS merged_summary
-                FROM (
-                    SELECT
-                        NULLIF(JSON_EXTRACT(journey_dataset, '$.crash_reports'), JSON_ARRAY()) AS crash_report,
-                        NULLIF(JSON_EXTRACT(journey_dataset, '$.severe_crash_reports'), JSON_ARRAY()) AS severe_crash_report,
-                        journey_dataset
-                    FROM journeys
-                    WHERE VID = ?
-                        AND JSON_LENGTH(JSON_EXTRACT(journey_dataset, '$.crash_reports')) > 0
-                        AND JSON_LENGTH(JSON_EXTRACT(journey_dataset, '$.severe_crash_reports')) > 0
-                        AND JSON_EXTRACT(journey_dataset, '$.hard_braking_events') IS NOT NULL
-                        AND JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events') IS NOT NULL
-                        AND JSON_EXTRACT(journey_dataset, '$.speeding_events') IS NOT NULL
-                ) AS filtered;
-            `, [vid]);
+        const [rows] = await db.promise().query(`
+            SELECT JSON_OBJECT(
+                'crash_reports', JSON_ARRAYAGG(crash_report),
+                'severe_crash_reports', JSON_ARRAYAGG(severe_crash_report),
+                'total_hard_braking_events', SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_braking_events')) AS UNSIGNED)),
+                'total_hard_acceleration_events', SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events')) AS UNSIGNED)),
+                'total_speeding_events', SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speeding_events')) AS UNSIGNED))
+            ) AS merged_summary
+            FROM (
+                SELECT
+                    NULLIF(JSON_EXTRACT(journey_dataset, '$.crash_reports'), JSON_ARRAY()) AS crash_report,
+                    NULLIF(JSON_EXTRACT(journey_dataset, '$.severe_crash_reports'), JSON_ARRAY()) AS severe_crash_report,
+                    journey_dataset
+                FROM journeys
+                WHERE VID = ?
+                    AND JSON_LENGTH(JSON_EXTRACT(journey_dataset, '$.crash_reports')) > 0
+                    AND JSON_LENGTH(JSON_EXTRACT(journey_dataset, '$.severe_crash_reports')) > 0
+                    AND JSON_EXTRACT(journey_dataset, '$.hard_braking_events') IS NOT NULL
+                    AND JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events') IS NOT NULL
+                    AND JSON_EXTRACT(journey_dataset, '$.speeding_events') IS NOT NULL
+            ) AS filtered;
+        `, [vid]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'No data found for the given VID' });
+        }
 
         res.json({
-            crashData: crashData[0].merged_summary
+            crashData: rows[0].merged_summary
         });
     } catch (error) {
         console.error('Error fetching crash data summary:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
 
 
 

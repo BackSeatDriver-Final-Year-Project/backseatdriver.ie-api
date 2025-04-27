@@ -32,7 +32,7 @@ Back Seat Driver is a telematics-focused application designed to provide drivers
 2. Install dependencies:
    ```sh
    cd backseatdriver-api
-   npm install
+   npm install --force
    ```
 3. Configure environment variables:
    ```sh

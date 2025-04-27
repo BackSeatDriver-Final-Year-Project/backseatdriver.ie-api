@@ -188,7 +188,6 @@ const getVehicleSpeedSummary = async (vid) => {
     }
 };
 
-// Get crash data summary
 const getCrashDataSummary = async (vid) => {
     try {
         const [rows] = await db.promise().query(`
@@ -242,7 +241,9 @@ const getCrashDataSummary = async (vid) => {
                       AND JSON_EXTRACT(journey_dataset, '$.speeding_events') IS NOT NULL
                 )
             ) AS merged_summary
-        `, [vid, vid, vid, vid, vid, vid, vid, vid]);
+        `, 
+        // 🛠 Here you pass vid 8 times
+        [vid, vid, vid, vid, vid, vid, vid, vid]);
 
         if (rows.length === 0) {
             return null;
@@ -253,6 +254,7 @@ const getCrashDataSummary = async (vid) => {
         throw error;
     }
 };
+
 
 module.exports = {
     getVehicles,

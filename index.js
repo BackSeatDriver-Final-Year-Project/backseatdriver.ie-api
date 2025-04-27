@@ -133,29 +133,49 @@ io.on('connection', (socket) => {
                 journey_end_time
             });
 
-            // Save the journey data
-            const journeyQuery = `
+            const findVidQuery = `
+                SELECT unique_id
+                FROM registered_vehicles
+                WHERE VID = ?
+            `;
+
+            db.query(findVidQuery, [vin], (err, result) => {
+                if (err) {
+                    console.error('Error finding VID:', err);
+                    return;
+                }
+
+                if (result.length === 0) {
+                    console.log('No matching VID found for VIN:', vin);
+                    return;
+                }
+
+                // Get the VID (unique_id)
+                const vid = result[0].unique_id;
+                // Save the journey data
+                const journeyQuery = `
                 INSERT INTO journeys (VID, journey_start_time, journey_commence_time, journey_dataset, speed_dataset, fuel_usage_dataset) 
                 VALUES (?, ?, ?, ?, ?, ?)
             `;
 
-            console.log('IMPORTANT HERE')
-            console.log(subscribedClients[vin]);
-            console.log('IMPORTANT HERE');
+                console.log('IMPORTANT HERE')
+                console.log(socket.vin);
+                console.log('IMPORTANT HERE');
 
-            db.query(journeyQuery, [
-                3, // Replace with actual VID lookup
-                journey_start_time,
-                journey_end_time,
-                JSON.stringify(journey_dataset),
-                JSON.stringify(speed_dataset),
-                JSON.stringify(fuel_usage_dataset)
-            ], (err, result) => {
-                if (err) {
-                    console.error('Error saving journey data:', err);
-                } else {
-                    console.log('Journey data saved successfully');
-                }
+                db.query(journeyQuery, [
+                    vid, // Replace with actual VID lookup
+                    journey_start_time,
+                    journey_end_time,
+                    JSON.stringify(journey_dataset),
+                    JSON.stringify(speed_dataset),
+                    JSON.stringify(fuel_usage_dataset)
+                ], (err, result) => {
+                    if (err) {
+                        console.error('Error saving journey data:', err);
+                    } else {
+                        console.log('Journey data saved successfully');
+                    }
+                });
             });
 
             // Clean up memory

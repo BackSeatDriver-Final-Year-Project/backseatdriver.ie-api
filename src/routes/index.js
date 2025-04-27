@@ -4,7 +4,7 @@ const authRoutes = require('./auth');
 const vehicleRoutes = require('./vehicle');
 const journeyRoutes = require('./journey');
 
-router.use('/auth', authRoutes);
+router.use('/', authRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/journeys', journeyRoutes);
 

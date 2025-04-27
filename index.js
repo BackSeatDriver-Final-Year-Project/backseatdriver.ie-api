@@ -552,7 +552,7 @@ app.post('/register-vehicle', authenticateToken, (req, res) => {
     }
 
     const query = 'INSERT INTO registered_vehicles (unique_id, name, VID) VALUES (?, ?, ?)';
-    const values = [name, VID, userId || null];
+    const values = [userId,name, VID || null];
 
     db.query(query, values, (err, result) => {
         if (err) {

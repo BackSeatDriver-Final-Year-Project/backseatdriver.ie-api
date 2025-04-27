@@ -139,6 +139,10 @@ io.on('connection', (socket) => {
                 VALUES (?, ?, ?, ?, ?, ?)
             `;
 
+            console.log('IMPORTANT HERE')
+            console.log(subscribedClients[vin]);
+            console.log('IMPORTANT HERE');
+
             db.query(journeyQuery, [
                 3, // Replace with actual VID lookup
                 journey_start_time,
@@ -358,7 +362,7 @@ app.post('/register', async (req, res) => {
         }
 
         if (results.length > 0) {
-            return res.status(400).json({ message: 'Username already exists' });
+            return res.status(400).json({ message: 'Email already exists on our records' });
         }
 
         // Hash the password before storing it
@@ -368,10 +372,11 @@ app.post('/register', async (req, res) => {
         const insertUserQuery = 'INSERT INTO users (username, password) VALUES (?, ?)';
         db.query(insertUserQuery, [username, hashedPassword], (err, results) => {
             if (err) {
-                return handleDBError(err, res);
+                return res.status(401).json({ message: 'Could not register that account! are you sure you are not already registered?' });
+                // return handleDBError(err, res);
             }
 
-            res.status(201).json({ message: 'User registered successfully' });
+            res.status(201).json({ message: 'User registered successfully!' });
         });
     });
 });
@@ -492,14 +497,14 @@ app.get('/vehicles/id/:id', authenticateToken, (req, res) => {
 // Endpoint to register a new vehicle
 app.post('/register-vehicle', authenticateToken, (req, res) => {
     const userId = req.user.id; // Extract user ID from the JWT token
-    const { name, VID, last_login } = req.body;
+    const { name, VID } = req.body;
 
     if (!name || !VID) {
         return res.status(400).json({ message: 'Name and VID are required' });
     }
 
-    const query = 'INSERT INTO registered_vehicles (name, VID, FK, last_login) VALUES (?, ?, ?, ?)';
-    const values = [name, VID, userId, last_login || null];
+    const query = 'INSERT INTO registered_vehicles (unique_id, name, VID) VALUES (?, ?, ?)';
+    const values = [name, VID, userId || null];
 
     db.query(query, values, (err, result) => {
         if (err) {

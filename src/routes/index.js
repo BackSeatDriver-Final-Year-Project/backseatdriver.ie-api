@@ -6,6 +6,6 @@ const journeyRoutes = require('./journey');
 
 router.use('/', authRoutes);
 router.use('/vehicles', vehicleRoutes);
-router.use('/', journeyRoutes);
+router.use('/journeys', journeyRoutes);
 
 module.exports = router;

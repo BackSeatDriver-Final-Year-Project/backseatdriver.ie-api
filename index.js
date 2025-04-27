@@ -329,55 +329,56 @@ app.get('/crash-data-summary/:vid', async (req, res) => {
     try {
         const [rows] = await db.promise().query(`
             SELECT JSON_OBJECT(
-            'crash_reports', (
-                SELECT JSON_ARRAYAGG(NULLIF(JSON_EXTRACT(journey_dataset, '$.crash_reports'), JSON_ARRAY()))
-                FROM journeys
-                WHERE VID = ?
-                AND JSON_LENGTH(JSON_EXTRACT(journey_dataset, '$.crash_reports')) > 0
-            ),
-            'severe_crash_reports', (
-                SELECT JSON_ARRAYAGG(NULLIF(JSON_EXTRACT(journey_dataset, '$.severe_crash_reports'), JSON_ARRAY()))
-                FROM journeys
-                WHERE VID = ?
-                AND JSON_LENGTH(JSON_EXTRACT(journey_dataset, '$.severe_crash_reports')) > 0
-            ),
-            'total_hard_braking_events', (
-                SELECT SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_braking_events')) AS UNSIGNED))
-                FROM journeys
-                WHERE VID = ?
-                AND JSON_EXTRACT(journey_dataset, '$.hard_braking_events') IS NOT NULL
-            ),
-            'total_hard_acceleration_events', (
-                SELECT SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events')) AS UNSIGNED))
-                FROM journeys
-                WHERE VID = ?
-                AND JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events') IS NOT NULL
-            ),
-            'total_speeding_events', (
-                SELECT SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speeding_events')) AS UNSIGNED))
-                FROM journeys
-                WHERE VID = ?
-                AND JSON_EXTRACT(journey_dataset, '$.speeding_events') IS NOT NULL
-            ),
-            'count_hard_braking_events', (
-                SELECT COUNT(*)
-                FROM journeys
-                WHERE VID = ?
-                AND JSON_EXTRACT(journey_dataset, '$.hard_braking_events') IS NOT NULL
-            ),
-            'count_hard_acceleration_events', (
-                SELECT COUNT(*)
-                FROM journeys
-                WHERE VID = ?
-                AND JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events') IS NOT NULL
-            ),
-            'count_speeding_events', (
-                SELECT COUNT(*)
-                FROM journeys
-                WHERE VID = ?
-                AND JSON_EXTRACT(journey_dataset, '$.speeding_events') IS NOT NULL
-            )
-        ) AS merged_summary
+    'crash_reports', (
+        SELECT JSON_ARRAYAGG(NULLIF(JSON_EXTRACT(journey_dataset, '$.crash_reports'), JSON_ARRAY()))
+        FROM journeys
+        WHERE VID = ?
+          AND JSON_LENGTH(JSON_EXTRACT(journey_dataset, '$.crash_reports')) > 0
+    ),
+    'severe_crash_reports', (
+        SELECT JSON_ARRAYAGG(NULLIF(JSON_EXTRACT(journey_dataset, '$.severe_crash_reports'), JSON_ARRAY()))
+        FROM journeys
+        WHERE VID = ?
+          AND JSON_LENGTH(JSON_EXTRACT(journey_dataset, '$.severe_crash_reports')) > 0
+    ),
+    'total_hard_braking_events', (
+        SELECT SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_braking_events')) AS UNSIGNED))
+        FROM journeys
+        WHERE VID = ?
+          AND JSON_EXTRACT(journey_dataset, '$.hard_braking_events') IS NOT NULL
+    ),
+    'total_hard_acceleration_events', (
+        SELECT SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events')) AS UNSIGNED))
+        FROM journeys
+        WHERE VID = ?
+          AND JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events') IS NOT NULL
+    ),
+    'total_speeding_events', (
+        SELECT SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(journey_dataset, '$.speeding_events')) AS UNSIGNED))
+        FROM journeys
+        WHERE VID = ?
+          AND JSON_EXTRACT(journey_dataset, '$.speeding_events') IS NOT NULL
+    ),
+    'count_hard_braking_events', (
+        SELECT COUNT(*)
+        FROM journeys
+        WHERE VID = ?
+          AND JSON_EXTRACT(journey_dataset, '$.hard_braking_events') IS NOT NULL
+    ),
+    'count_hard_acceleration_events', (
+        SELECT COUNT(*)
+        FROM journeys
+        WHERE VID = ?
+          AND JSON_EXTRACT(journey_dataset, '$.hard_acceleration_events') IS NOT NULL
+    ),
+    'count_speeding_events', (
+        SELECT COUNT(*)
+        FROM journeys
+        WHERE VID = ?
+          AND JSON_EXTRACT(journey_dataset, '$.speeding_events') IS NOT NULL
+    )
+) AS merged_summary
+
         `, [vid]);
 
         if (rows.length === 0) {
